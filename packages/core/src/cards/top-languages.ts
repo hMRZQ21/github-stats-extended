@@ -573,8 +573,8 @@ const renderDonutVerticalLayout = (
   bgColor?: string | Array<string>,
 ): string => {
   // Donut vertical chart radius, ring thickness, and total length
-  const radius = 100;
-  const strokeWidth = 30;
+  const radius = 65;
+  const strokeWidth = 20;
   const totalCircleLength = getCircleLength(radius);
   const centerX = 150;
   const centerY = 100;
@@ -641,7 +641,15 @@ const renderDonutVerticalLayout = (
   const dividerInnerRadius = radius - strokeWidth / 2;
   const dividerOuterRadius = radius + strokeWidth / 2;
   const dividers = boundaryPercentages.map((pct) => {
-    const angle = (pct / 100) * 360;
+    // The ring is drawn as successive full circles that shrink inward from
+    // angle 0 (see the loop above) rather than standard arc segments, so a
+    // slice's boundary sits at the *supplement* of its cumulative
+    // percentage, not the cumulative percentage itself. E.g. with one 100%
+    // language, its own boundary must land back at angle 0 (its cumulative
+    // is 100%, and 360 - 100% of 360 = 0) - not at 360deg/0deg by
+    // coincidence, but because circle-N's visible window is
+    // [0, 360 - indent_N) and indent_N here is the full circumference.
+    const angle = 360 - (pct / 100) * 360;
     const inner = polarToCartesian(centerX, centerY, dividerInnerRadius, angle);
     const outer = polarToCartesian(centerX, centerY, dividerOuterRadius, angle);
     return `
