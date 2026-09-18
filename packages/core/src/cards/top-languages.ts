@@ -570,19 +570,34 @@ const renderDonutVerticalLayout = (
   totalLanguageSize: number,
   statsFormat: string,
   hideValues?: boolean,
+  bgColor?: string | Array<string>,
 ): string => {
-  // Donut vertical chart radius and total length
-  const radius = 80;
+  // Donut vertical chart radius, ring thickness, and total length
+  const radius = 100;
+  const strokeWidth = 30;
   const totalCircleLength = getCircleLength(radius);
+  const centerX = 150;
+  const centerY = 100;
+  // Solid divider color between slices; falls back to the card's own
+  // background so it reads as a clean cut rather than a random color.
+  // (A gradient bgColor just uses its first stop - dividers on a gradient
+  // background are a rare enough case not to warrant blending logic here.)
+  const dividerColor = Array.isArray(bgColor)
+    ? (bgColor[0] ?? "#ffffff")
+    : (bgColor ?? "#ffffff");
 
   // SVG circles
   const circles = [];
+  // Cumulative percentage after each language, used to place divider lines
+  // at the boundary between adjacent slices.
+  const boundaryPercentages: Array<number> = [];
 
   // Start indent for donut vertical chart parts
   let indent = 0;
 
   // Start delay coefficient for donut vertical chart parts
   let startDelayCoefficient = 1;
+  let cumulativePercentage = 0;
 
   // Generate each donut vertical chart part
   for (const lang of langs) {
@@ -595,12 +610,12 @@ const renderDonutVerticalLayout = (
     circles.push(`
       <g class="stagger" style="animation-delay: ${delay}ms">
         <circle
-          cx="150"
-          cy="100"
+          cx="${centerX}"
+          cy="${centerY}"
           r="${radius}"
           fill="transparent"
           stroke="${langColor}"
-          stroke-width="25"
+          stroke-width="${strokeWidth}"
           stroke-dasharray="${totalCircleLength}"
           stroke-dashoffset="${indent}"
           size="${percentage}"
@@ -613,13 +628,41 @@ const renderDonutVerticalLayout = (
     indent += circleLength;
     // Update the start delay coefficient for the next part
     startDelayCoefficient += 1;
+
+    cumulativePercentage += percentage;
+    boundaryPercentages.push(cumulativePercentage);
   }
+
+  // Draw a thin divider line at each slice boundary, on top of the ring, so
+  // adjacent slices read as distinct wedges instead of a blurred gradient.
+  // Boundary angle uses the same convention as the ring itself: 0deg is the
+  // 3 o'clock point, sweeping clockwise (no extra rotation is applied here,
+  // matching the un-rotated circles above).
+  const dividerInnerRadius = radius - strokeWidth / 2;
+  const dividerOuterRadius = radius + strokeWidth / 2;
+  const dividers = boundaryPercentages.map((pct) => {
+    const angle = (pct / 100) * 360;
+    const inner = polarToCartesian(centerX, centerY, dividerInnerRadius, angle);
+    const outer = polarToCartesian(centerX, centerY, dividerOuterRadius, angle);
+    return `
+      <line
+        x1="${inner.x}"
+        y1="${inner.y}"
+        x2="${outer.x}"
+        y2="${outer.y}"
+        stroke="${dividerColor}"
+        stroke-width="2"
+        data-testid="lang-donut-divider"
+      />
+    `;
+  });
 
   return `
     <svg data-testid="lang-items">
       <g transform="translate(0, 0)">
         <svg data-testid="donut">
           ${circles.join("")}
+          ${dividers.join("")}
         </svg>
       </g>
       <g transform="translate(0, 220)">
@@ -974,6 +1017,7 @@ const renderTopLanguages = (
       totalLanguageSize,
       stats_format,
       hide_values,
+      lightColors.bgColor,
     );
   } else if (layout === "compact" || hide_progress === true) {
     height =

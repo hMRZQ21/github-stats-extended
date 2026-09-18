@@ -466,7 +466,14 @@ const renderStatsCard = (
         shiftValuePos: 29.01 + (longLabels ? 50 : 0) + (isLongLocale ? 50 : 0),
         bold: text_bold,
         numberFormat: number_format,
-        numberPrecision: number_precision,
+        // `number_precision` only makes sense for stats that go through
+        // kFormatter's "k"-abbreviation path with a real magnitude to round;
+        // forwarding it to every stat (stars, commits, etc.) corrupts small
+        // counts, e.g. kFormatter(5, 1) => "0.0k" instead of "5". None of
+        // the stats rendered here need it: prs_merged_percentage already
+        // applies `number_precision` itself above (and bypasses kFormatter
+        // entirely via its own `id` check in createTextNode).
+        numberPrecision: undefined,
         link: stat.link,
       }),
     );
