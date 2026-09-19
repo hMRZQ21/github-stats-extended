@@ -169,7 +169,11 @@ const calculateDonutLayoutHeight = (totalLangs: number): number => {
  * @returns Card height.
  */
 const calculateDonutVerticalLayoutHeight = (totalLangs: number): number => {
-  return 300 + Math.round(totalLangs / 2) * 25;
+  // 265 = the old base (300) minus 35px: the ring shrank from radius
+  // 80/strokeWidth 25 to 65/20 without shrinking the padding above/below it
+  // to match, so the card carried 35px of pure whitespace. See the
+  // centerY/legendOffsetY derivation in renderDonutVerticalLayout.
+  return 265 + Math.round(totalLangs / 2) * 25;
 };
 
 /**
@@ -577,7 +581,15 @@ const renderDonutVerticalLayout = (
   const strokeWidth = 20;
   const totalCircleLength = getCircleLength(radius);
   const centerX = 150;
-  const centerY = 100;
+  // Padding above the ring (title side) and below it (legend side).
+  // Carried over from when this ring was radius 80/strokeWidth 25 (commit
+  // d99a5b0 shrank it to 65/20 without re-deriving centerY/legendOffsetY,
+  // which is why a smaller ring anchored at a fixed centerY=100 left extra
+  // empty space above and below it).
+  const ringTopPadding = 7.5;
+  const ringBottomPadding = 27.5;
+  const centerY = ringTopPadding + radius + strokeWidth / 2;
+  const legendOffsetY = centerY + radius + strokeWidth / 2 + ringBottomPadding;
   // Solid divider color between slices; falls back to the card's own
   // background so it reads as a clean cut rather than a random color.
   // (A gradient bgColor just uses its first stop - dividers on a gradient
@@ -673,7 +685,7 @@ const renderDonutVerticalLayout = (
           ${dividers.join("")}
         </svg>
       </g>
-      <g transform="translate(0, 220)">
+      <g transform="translate(0, ${legendOffsetY})">
         <svg data-testid="lang-names" x="${CARD_PADDING}">
           ${createLanguageTextNode({
             langs,
